@@ -39,7 +39,11 @@ with st.sidebar:
             st.warning("Add a short description before uploading.")
         else:
             try:
-                document_upload_rag(uploaded_file, description.strip())
+                document_upload_rag(
+                    uploaded_file,
+                    description.strip(),
+                    st.session_state.session_id,
+                )
                 st.success(f"Indexed {uploaded_file.name}.")
             except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
                 st.error(f"Document upload failed: {exc}")

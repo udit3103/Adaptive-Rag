@@ -1,7 +1,7 @@
 # Document Flow
 
 ```text
-                    Streamlit UI
+                    Next.js web UI
                         |
                         | multipart PDF/TXT + X-Description
                         v
@@ -15,20 +15,20 @@
               Create OpenAI embeddings
                         |
                         v
-           Add chunks to in-memory FAISS
+           Add owner-scoped chunks to Qdrant
                         |
-                        | query/session_id
+                        | query/session_id + HTTP-only owner cookie
                         v
                  FastAPI query endpoint
                         |
            LangGraph routes the question
              /              |             \
             v               v              v
-     FAISS retrieval   General LLM     Tavily search
+     Filtered Qdrant   General LLM     Tavily search
             \               |              /
              \              |             /
                         v
                   Answer to chat UI
 ```
 
-The FAISS index is empty until a document is uploaded. Subsequent uploads add chunks to the existing index. The index and default in-memory chat history are lost when the API process restarts.
+The Qdrant collection is created on first upload and persists independently of the API process. Retrieval is filtered to the browser's HTTP-only owner cookie. Default in-memory chat history is lost when the API process restarts.

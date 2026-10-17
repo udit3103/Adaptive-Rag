@@ -6,14 +6,15 @@ import os
 import tempfile
 from pathlib import Path
 
-from fastapi import UploadFile, File
+from fastapi import File, HTTPException, UploadFile
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from src.core.config import settings
 from src.rag.retriever_setup import retriever_chain
 
 
-def documents(description: str, file: UploadFile = File(...)):
+def documents(description: str, file: UploadFile = File(...), owner_id: str = ""):
     """
     Process and upload a document for RAG.
 
@@ -32,7 +33,6 @@ def documents(description: str, file: UploadFile = File(...)):
     """
     filename = file.filename
     if not filename or Path(filename).suffix.lower() not in {".pdf", ".txt"}:
-        from fastapi import HTTPException
         raise HTTPException(
             status_code=400,
             detail="Only PDF and TXT files are supported"
@@ -55,7 +55,6 @@ def documents(description: str, file: UploadFile = File(...)):
     try:
         docs = loader.load()
     except Exception as e:
-        from fastapi import HTTPException
         raise HTTPException(
             status_code=500,
             detail=f"Error loading file: {e}"
@@ -72,6 +71,9 @@ def documents(description: str, file: UploadFile = File(...)):
     for chunk in chunks:
         chunk.metadata["description"] = description.strip()
 
-    return retriever_chain(chunks)
-
-
+    if not settings.QDRANT_URL:
+        raise HTTPException(
+            status_code=503,
+            detail="Document indexing is unavailable: configure QDRANT_URL.",
+        )
+    return retriever_chain(chunks, owner_id)

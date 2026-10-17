@@ -2,19 +2,37 @@
 API routes for RAG operations.
 """
 
-from fastapi import APIRouter, UploadFile, File, Header
+import secrets
+
+from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 from langchain_core.messages import HumanMessage, AIMessage
 from starlette.concurrency import run_in_threadpool
 
+from src.core.config import settings
 from src.memory.chat_history_mongo import ChatHistory
 from src.models.query_request import QueryRequest
 from src.rag.document_upload import documents
 from src.rag.graph_builder import builder
+from src.rag.retriever_setup import current_user_id
 
 router = APIRouter()
 
 
-@router.post("/rag/query")
+async def require_api_token(
+    authorization: str | None = Header(default=None),
+) -> None:
+    """Require the shared secret used by the Next.js server-side proxy."""
+    if not settings.RAG_API_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail="RAG_API_TOKEN is not configured on the API service.",
+        )
+    expected = f"Bearer {settings.RAG_API_TOKEN}"
+    if authorization is None or not secrets.compare_digest(authorization, expected):
+        raise HTTPException(status_code=401, detail="Invalid API credentials.")
+
+
+@router.post("/rag/query", dependencies=[Depends(require_api_token)])
 async def rag_query(req: QueryRequest):
     """
     Process a RAG query and return the result.
@@ -29,7 +47,11 @@ async def rag_query(req: QueryRequest):
     await chat_history.add_message(HumanMessage(content=req.query))
 
     messages = await chat_history.get_messages()
-    result = await run_in_threadpool(builder.invoke, {"messages": messages})
+    owner_token = current_user_id.set(req.user_id or req.session_id)
+    try:
+        result = await run_in_threadpool(builder.invoke, {"messages": messages})
+    finally:
+        current_user_id.reset(owner_token)
     output_text = result["messages"][-1].content
 
     # Save assistant message
@@ -38,10 +60,14 @@ async def rag_query(req: QueryRequest):
     return {"result": result["messages"][-1]}
 
 
-@router.post("/rag/documents/upload")
+@router.post(
+    "/rag/documents/upload",
+    dependencies=[Depends(require_api_token)],
+)
 async def upload_file(
     file: UploadFile = File(...),
-    description: str = Header(..., alias="X-Description")
+    description: str = Header(..., alias="X-Description"),
+    owner_id: str = Header(..., alias="X-User-ID"),
 ):
     """
     Upload a document for RAG processing.
@@ -53,5 +79,5 @@ async def upload_file(
     Returns:
         Upload status.
     """
-    status_upload = await run_in_threadpool(documents, description, file)
+    status_upload = await run_in_threadpool(documents, description, file, owner_id)
     return {"status": status_upload}

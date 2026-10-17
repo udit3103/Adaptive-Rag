@@ -11,5 +11,13 @@ services:
         sync: false
       - key: TAVILY_API_KEY
         sync: false
+      - key: RAG_API_TOKEN
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: QDRANT_COLLECTION
+        value: adaptive-rag-documents
       - key: CHAT_HISTORY_BACKEND
         value: memory
