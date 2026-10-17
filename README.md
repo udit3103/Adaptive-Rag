@@ -28,7 +28,7 @@ Create a Qdrant Cloud cluster and API key. Keep its HTTPS cluster URL and key pr
 
 ### 2. Deploy the Python API
 
-In Render, create a **Blueprint** for this repository. Render reads [`render.yaml`](render.yaml). Configure these secret values when prompted:
+In Render, create a **Blueprint** for this repository. Render reads [`render.yaml`](render.yaml) and uses the Python version pinned in [`.python-version`](.python-version). Configure these secret values when prompted:
 
 - `OPENAI_API_KEY`: a valid OpenAI key (rotate any key previously pasted into a chat).
 - `RAG_API_TOKEN`: a newly generated random secret, at least 32 random bytes. Use the **same** value in Render and Vercel.
