@@ -59,6 +59,23 @@ Open <http://localhost:8501> for the app and <http://127.0.0.1:8000/docs> for in
 
 The Streamlit UI generates a session ID automatically; no separate login service is required. If the API runs at a different address, set `RAG_API_URL` in `.env`.
 
+## Public demo deployment
+
+The existing interface is a Streamlit app and is not a Vercel web application. For a demo without rewriting the UI, deploy the API on Render and the Streamlit app on Streamlit Community Cloud:
+
+1. In Render, create a **Blueprint** from this GitHub repository. Render reads [`render.yaml`](render.yaml) and creates the FastAPI service. Enter a **rotated** OpenAI key as the `OPENAI_API_KEY` secret in Render; optionally set `TAVILY_API_KEY` there for web search. Do not put secrets in GitHub.
+2. Wait for the Render service to finish deploying, then copy its public URL and check that `<render-url>/` returns the API health message.
+3. In Streamlit Community Cloud, create an app from this repository and choose `streamlit_app/home.py` as the main file.
+4. In the Streamlit app's **Settings → Secrets**, set:
+
+   ```toml
+   RAG_API_URL = "https://your-render-service.onrender.com"
+   ```
+
+5. Open the Streamlit app URL and try a query or upload a small PDF/TXT file.
+
+The API's in-memory FAISS index and chat history reset when its service restarts. Render's free service may sleep when idle, so its first request after inactivity can be slow. This setup is intended as a demo, not production hosting. See [Document upload flow](DOCUMENT_UPLOAD_FLOW.md) for current storage limits.
+
 ## API
 
 ### Ask a question
