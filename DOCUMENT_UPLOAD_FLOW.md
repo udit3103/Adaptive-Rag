@@ -21,9 +21,13 @@ The Qdrant collection is created on the first successful upload. API startup doe
 
 ## Example
 
+The upload endpoint requires the API Bearer token and an owner ID. For normal use, upload through the Next.js interface, which attaches the private token and browser owner ID on the server. Do not expose either value in browser code.
+
 ```powershell
 curl.exe -X POST http://127.0.0.1:8000/rag/documents/upload `
+  -H "Authorization: Bearer $env:RAG_API_TOKEN" `
   -H "X-Description: Python programming guide" `
+  -H "X-User-ID: your-browser-owner-id" `
   -F "file=@python_guide.pdf"
 ```
 
