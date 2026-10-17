@@ -10,7 +10,46 @@ type Message = {
 type QueryResponse = {
   result?: { content?: string };
   detail?: string;
+  status?: boolean;
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isQueryResponse(value: unknown): value is QueryResponse {
+  if (!isRecord(value)) return false;
+  if ("detail" in value && typeof value.detail !== "string") return false;
+  if ("status" in value && typeof value.status !== "boolean") return false;
+  if ("result" in value && value.result !== undefined) {
+    if (!isRecord(value.result)) return false;
+    if ("content" in value.result && typeof value.result.content !== "string") {
+      return false;
+    }
+  }
+  return true;
+}
+
+async function readApiResponse(response: Response): Promise<QueryResponse> {
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new Error(
+      response.ok
+        ? "The API returned an unreadable response. Please try again."
+        : `The API returned an internal error (HTTP ${response.status}). Check the API service and try again.`,
+    );
+  }
+
+  if (!isQueryResponse(payload)) {
+    throw new Error("The API returned an invalid response. Please try again.");
+  }
+  if (!response.ok) {
+    throw new Error(payload.detail ?? `The API request failed (HTTP ${response.status}).`);
+  }
+  return payload;
+}
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -48,10 +87,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, session_id: sessionId }),
       });
-      const data = (await response.json()) as QueryResponse;
-      if (!response.ok) {
-        throw new Error(data.detail ?? "The API could not answer this question.");
-      }
+      const data = await readApiResponse(response);
       setMessages((current) => [
         ...current,
         { role: "assistant", content: data.result?.content ?? "No answer returned." },
@@ -81,10 +117,8 @@ export default function Home() {
         method: "POST",
         body: formData,
       });
-      const data = (await response.json()) as { detail?: string };
-      if (!response.ok) {
-        throw new Error(data.detail ?? "Document upload failed.");
-      }
+      const data = await readApiResponse(response);
+      if (!data.status) throw new Error("Document upload returned no status.");
       setNotice(`${file.name} was added to your knowledge base.`);
       setDescription("");
       if (fileRef.current) fileRef.current.value = "";

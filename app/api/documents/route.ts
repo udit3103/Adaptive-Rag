@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { isRateLimited } from "../rate-limit";
 import { getOwnerId } from "../session-cookie";
+import { forwardApiResponse } from "../upstream-response";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -78,11 +79,7 @@ export async function POST(request: Request) {
         signal: AbortSignal.timeout(55_000),
       },
     );
-    const body = await response.text();
-    return new NextResponse(body, {
-      status: response.status,
-      headers: { "Content-Type": response.headers.get("content-type") ?? "application/json" },
-    });
+    return await forwardApiResponse(response);
   } catch {
     return NextResponse.json(
       { detail: "The RAG API could not be reached. Try again shortly." },

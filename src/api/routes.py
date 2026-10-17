@@ -6,6 +6,7 @@ import secrets
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 from langchain_core.messages import HumanMessage, AIMessage
+from openai import RateLimitError
 from starlette.concurrency import run_in_threadpool
 
 from src.core.config import settings
@@ -49,7 +50,16 @@ async def rag_query(req: QueryRequest):
     messages = await chat_history.get_messages()
     owner_token = current_user_id.set(req.user_id or req.session_id)
     try:
-        result = await run_in_threadpool(builder.invoke, {"messages": messages})
+        try:
+            result = await run_in_threadpool(builder.invoke, {"messages": messages})
+        except RateLimitError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "OpenAI API credits are exhausted or the account is rate-limited. "
+                    "Check API billing and limits, then try again."
+                ),
+            ) from exc
     finally:
         current_user_id.reset(owner_token)
     output_text = result["messages"][-1].content
@@ -79,5 +89,16 @@ async def upload_file(
     Returns:
         Upload status.
     """
-    status_upload = await run_in_threadpool(documents, description, file, owner_id)
+    try:
+        status_upload = await run_in_threadpool(
+            documents, description, file, owner_id
+        )
+    except RateLimitError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "OpenAI API credits are exhausted or the account is rate-limited. "
+                "Check API billing and limits, then try again."
+            ),
+        ) from exc
     return {"status": status_upload}

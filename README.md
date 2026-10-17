@@ -94,6 +94,7 @@ Open <http://localhost:3000>. FastAPI health and interactive API docs are at <ht
 - Qdrant Cloud persists the vector index. In-memory chat history resets when the API restarts.
 - Render's free web service may sleep while idle, so the first request can be slow.
 - The demo has no account system. The Next.js proxy applies best-effort in-memory per-IP limits (20 queries/minute and 3 uploads/hour); these are not distributed quotas and may reset when serverless instances restart. The HTTP-only browser cookie scopes document retrieval, but is not a substitute for production authentication. Protect API credentials, monitor provider usage, and avoid uploading sensitive documents.
+- Chat and document embeddings require OpenAI API billing/credits. If the app reports an exhausted quota or rate limit, check the API account's billing and usage; a ChatGPT subscription does not provide API credits.
 - Provider usage may incur charges.
 - PDF extraction reads embedded text; scanned documents need OCR, which is not included.
 
